@@ -1,0 +1,28 @@
+# Barra superior / personalización del menú
+# Enlaces de navegación
+# Para vincular un widget de página de inicio, especifique la URL como un hash `#` seguido del nombre de archivo del
+# widget deseado en su carpeta `content/home/`.
+# El parámetro de peso define el orden en que aparecerán los enlaces.
+
+main:
+  - name: Inicio
+    url: '#about'
+    weight: 10
+  - name: Research
+    url: '#projects'
+    weight: 20
+  - name: Courses
+    url: '#publications'
+    weight: 30
+  - name: Posts
+    url: '#posts'
+    weight: 50
+  - name: Contact
+    url: '#contact'
+    weight: 60
+
+# Enlace a un PDF de su currículum/CV desde el menú.
+# Para habilitar, copie su currículum/CV en `static/uploads/resume.pdf` y elimine los comentarios de las líneas a continuación.
+  - name: CV
+    url: uploads/resume.pdf
+    weight: 70

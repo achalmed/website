@@ -1,0 +1,48 @@
+---
+title: Las flores de Iris
+author: Edison Achalma
+date: '2022-10-17'
+slug: las-flores-de-iris
+categories: []
+tags:
+  - Demo
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2022-10-17T21:59:55-05:00'
+featured: no
+draft: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+## El conjunto de datos Iris
+
+Este es un ejemplo básico de visualización interactiva con el paquete {plotly}.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(plotly)
+p <- iris |> 
+  ggplot(aes(Petal.Length, Petal.Width, col = Species)) +
+  geom_point()
+ggplotly(p)
+```
+
+
+Podemos incluir también tablas profesionales:
+
+```{r, message=FALSE}
+library(flextable)
+iris |> 
+  group_by(Species) |> 
+  summarise(across(.fns = list(mean))) |> 
+  flextable() |> 
+  autofit()
+```
+
+
+## Visualización de mapa interactivo

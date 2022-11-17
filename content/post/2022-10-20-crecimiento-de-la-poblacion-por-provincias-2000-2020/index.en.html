@@ -1,0 +1,111 @@
+---
+title: crecimiento-de-la-poblacion-por-provincias-2000-2020
+author: Edison Achalma
+date: '2022-10-20'
+slug: crecimiento-de-la-poblacion-por-provincias-2000-2020
+categories:
+  - crecimiento
+tags: []
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2022-10-20T23:56:34-05:00'
+featured: no
+draft: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+<script src="{{< blogdown/postref >}}index.en_files/clipboard/clipboard.min.js"></script>
+<link href="{{< blogdown/postref >}}index.en_files/xaringanExtra-clipboard/xaringanExtra-clipboard.css" rel="stylesheet" />
+<script src="{{< blogdown/postref >}}index.en_files/xaringanExtra-clipboard/xaringanExtra-clipboard.js"></script>
+<script>window.xaringanExtraClipboard(null, {"button":"<i class=\"fa fa-clipboard\"><\/i>","success":"<i class=\"fa fa-check\" style=\"color: #90BE6D\"><\/i>","error":"Press Ctrl+C to Copy"})</script>
+<link href="{{< blogdown/postref >}}index.en_files/font-awesome/css/all.css" rel="stylesheet" />
+<link href="{{< blogdown/postref >}}index.en_files/font-awesome/css/v4-shims.css" rel="stylesheet" />
+
+
+<div id="intro" class="section level2">
+<h2>Intro</h2>
+<p>En el <a href="https://perezp44.github.io/pjperez.web/posts/2021-02-10-poblacion-municipal/">segundo post</a> realicé una visualización, un mapa, una coropleta, con el crecimiento de la población municipal para el periodo 2000-2020. En este post voy a repetir el análisis pero para la población provincial. En realidad sólo tengo cambiar unas pocas lineas de mi anterior análisis, pero a veces las cosas no son tan sencillas y te acabas liando. Al final he hecho <strong>3 visualizaciones</strong>.</p>
+</div>
+<div id="datos" class="section level2">
+<h2>Datos</h2>
+<p>Los datos ya los tenía arreglados. Lo hice en el segundo post. Ahora sólo hay que cambiar unas pocas lineas para obtener, en lugar de los municipales, los crecimientos de población por provincias.</p>
+<pre class="r"><code>#- quiero hacer un mapa con el crecimiento de la población (por provincias) en el periodo 2000-2020
+library(tidyverse)
+
+#- datos de población
+pob_2000_2020 &lt;- readr::read_rds(&quot;/home/pjpv/Escritorio/my_datos_2021/datos/INE/pob_mun/ine_pob_mun_1996_2020.rds&quot;)
+
+#- rtdos (crec. poblacion en España)
+pob_esp &lt;- pob_2000_2020 %&gt;% 
+  filter(year %in% c(2000, 2020)) %&gt;% 
+  select(year, poblacion, values) %&gt;% 
+  group_by(year, poblacion) %&gt;% 
+  summarise(habitantes = sum(values)) %&gt;% 
+  group_by(poblacion) %&gt;% 
+  mutate(crec_abs = habitantes - lag(habitantes)) %&gt;% 
+  mutate(crec_percent = crec_abs /lag(habitantes)) %&gt;% ungroup()
+
+#- resultados pob provincial
+pob_prov &lt;- pob_2000_2020 %&gt;% 
+  filter(year %in% c(2000, 2020)) %&gt;% 
+  filter(poblacion == &quot;Total&quot;) %&gt;% 
+  group_by(ine_prov, ine_prov.n, year) %&gt;% 
+  mutate(habitantes = sum(values)) %&gt;% #- hago mutate y no summarise xq quiero guardar CCAA
+  select(ine_prov, ine_prov.n, ine_ccaa, ine_ccaa.n, year, habitantes) %&gt;%
+  distinct() %&gt;% 
+  pivot_wider(names_from = c(&quot;year&quot;), values_from = c(&quot;habitantes&quot;)) %&gt;% 
+  mutate(crec_2020_2000 = `2020`- `2000`) %&gt;% 
+  mutate(crec_porcentual = (`2020`- `2000`) / `2000` *100) %&gt;% 
+  arrange(desc(crec_porcentual)) %&gt;% ungroup() %&gt;% 
+  mutate(crec_porcentual.n = paste0(round(crec_porcentual, digits = 1), &quot;%&quot;)) %&gt;% 
+  mutate(crec_porcentual_d = 
+           cut(crec_porcentual, 
+               breaks=c(-Inf, 0.0, 10, pob_esp$crec_percent[6]*100, 30, Inf), 
+               labels=c(&quot;Negativo&quot;,&quot;[ 0% - 10%)&quot;,&quot;[10% - media)&quot;, &quot;[media, 30%)&quot;, &quot; &gt;30%&quot;)))</code></pre>
+</div>
+<div id="mapa-coropleta" class="section level2">
+<h2>Mapa: coropleta</h2>
+<p>Después cargar las geometrías, fusionar con los datos de crecimiento de población y hacer el mapa. Me costó un poquito el otro día para el segundo post, hoy easy-peasy.</p>
+<pre class="r"><code>library(sf)
+# datos geo originales de LAU2 (pero con Canarias shifted) ----
+geo_prov &lt;- readr::read_rds(&quot;/home/pjpv/Escritorio/my_datos_2021/datos/geo_datos_mios/geo_prov_2020_LAU2_canarias.rds&quot;)
+# Morocco geometría
+geo_morocco &lt;- rnaturalearth::ne_countries(scale = &quot;medium&quot;, returnclass = &quot;sf&quot;) %&gt;% 
+  dplyr::filter(sovereignt %in% c(&quot;Morocco&quot;)) %&gt;% select(sovereignt)
+#- fusionar geometria y crec.
+my_geo &lt;- left_join(my_geo, pob_prov) </code></pre>
+<p><img src="imagenes/map_crec_pob_provincial.png" width="70%" style="display: block; margin: auto;" /></p>
+<p><br></p>
+<p>El gráfico corrobora las tendencias mostradas en el <a href="https://perezp44.github.io/pjperez.web/posts/2021-02-10-poblacion-municipal/">segundo post</a>: las provincias que crecen por encima de la media española se concentran a lo largo de la costa mediterránea, en Baleares y Canarias, Navarra, la Rioja, así como en Madrid y su área de influencia. Por contra, el interior de Galicia (Lugo y Orense) y las provincias más occidentales de Castilla y León presentan los decrecimientos de población provinciales más intensos.</p>
+<p>Por supuesto, estos resultados solo nos ofrecen alguna pista parcial sobre la dinámica de la población. Son una foto fija de todo el periodo. Por ejemplo, Zamora es la provincia con una mayor descenso, un 16,2%, pero ¿ha sido este descenso un fenómeno sostenido en el tiempo o es algo reciente?</p>
+<p>La verdad es que la mejor opción para visualizar los datos sería hacer un <a href="https://shiny.rstudio.com/">shiny</a>, y que las personas interesadas tuviesen la libertad de analizar los datos que les interesasen, pero, de momento, lo dejo estar. Ya haré algún shiny más adelante, cuando consiga tunear uno a mi gusto para que sea medio nice-looking. De momento, aquí, voy a explorar otros 2 tipos de visualizaciones: <a href="https://www.data-to-viz.com/caveat/spaghetti.html">spaghetti plots</a> y <a href="https://www.r-graph-gallery.com/heatmap">heatmaps.</a>.</p>
+</div>
+<div id="spaghetti-plot" class="section level2">
+<h2>Spaghetti plot</h2>
+<p>Para ver la evolución en el tiempo de una variable, como es nuestro caso, lo más adecuado es una gráfica de linea temporal, pero es que son 52 provincias, así que, a no ser que utilicemos facets u otra técnica, nos va a salir lo que se suele conocer como un spaghetti plot. Vamos a verlo.</p>
+<p>Los datos ya están medio procesados pero, para evitar el problema de las escalas, voy a utilizar números índices en la visualización.</p>
+<p><img src="imagenes/spaguetti_crec_pob_provincial.png" width="70%" style="display: block; margin: auto;" /></p>
+<p>Dos conclusiones. Primera, sí, mejor un shiny y así puedes seleccionar exactamente lo que quieres visualizar. Ya lo haré. Segunda: que hacer un buen gráfico es muy costoso. Nunca se acaba, ni lo dejas como te gustaría!!</p>
+<p>Como veis no comento nada de la evolución de las series. Es que ya dije que los posts los escribo para mi y principalmente para aprender a programar en R. El objetivo era hacer el gráfico, no analizar que pasó con la población a nivel provincial.</p>
+</div>
+<div id="heatmap" class="section level2">
+<h2>Heatmap</h2>
+<p>Nunca había hecho un heatmap, así que ya tocaba hacer uno. Hacer heatmaps con <code>ggplot2</code> es sencillo, solo hay que usar <code>geom_tile()</code> y prácticamente sale sólo, como por arte de magia; además, hay, como mínimo, 2 paquetes específicos para heatmaps: <a href="https://jbengler.github.io/tidyheatmaps/articles/tidyheatmap.html"><code>tidyheatmaps</code></a> y <a href="https://rlbarter.github.io/superheat/index.html"><code>superheat</code></a>. Para aprender, utilicé <a href="https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/">este post</a> y <a href="https://rkabacoff.github.io/datavis/Other.html#heatmaps">este bookdown</a>.</p>
+<p>Probé diversas cosas y al final me quedo con 2. La verdad es que es complicado hacer un “buen” heatmap. Yo lo he intentado y el resultado ha quedado un poco meh!, y eso que me he apoyado bastante en la <a href="https://jbengler.github.io/tidyheatmaps/articles/tidyheatmap.html">vignette de <code>tidyheatmaps</code></a> y en <a href="https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/">este post</a>.</p>
+<p>El primero está hecho con el paquete <code>tidyheatmaps</code>. Es muy fácil hacer el heatmap,la vignette está muy bien explicada. El inconveniente es que al final no es un ggplot, por lo que no es fácil tunearlo a tu gusto fuera de las opciones que ha implementado el <a href="mailto:desarrollad@r" class="email">desarrollad@r</a>. Como se ve, en el gráfico hay mucha información resulta, en cierta manera, complicado sacar conclusiones sin utilizar información adicional</p>
+<p><br></p>
+<p><img src="imagenes/heatmap_01.png" width="70%" style="display: block; margin: auto;" /></p>
+<p><br></p>
+<p>El segundo está hecho con <code>geom_tile()</code> por lo que se pueden usar todas las opciones de configuración de ggplot2. El resultado visual es muy diferente porque en este gráfico no he mostrado tanta información: sólo he mostrado una variable dicotómica. En concreto se muestra, para cada año, si el crecimiento de la población en cada provincia fue superior al del conjunto de España o por contra fue menor.</p>
+<p>Se aprecia que, hay provincias, como Murcia o Illes Balears, que en general han crecido durante todo el periodo por encima de lo que lo ha hecho la población española y otras provincias, como Palencia, León o Burgos, que siempre lo han hecho por debajo del agregado español.</p>
+<p>No soy especialista en el tema ni demógrafo pero se aprecia, principalmente en el spaghetti plot, que, evidentemente hay dinámicas propias en las diferentes provincias españolas, con un grupo de provincias que presentan perdidas de población continuadas desde al menos 2000, pero que seguramente comenzasen en la década de los 60, y otro grupo de provincias más dinámicas y que presentan ganancias continuadas de población. Sin embargo, como no podría ser de otra forma, la dinámica de la población provincial también responde a patrones comunes a la economía española como se aprecia en el hecho de que la crisis de 2010, fruto de la crisis financiera de 2008, acabo teniendo un efecto importante en la dinámica de la población a través de sus efectos en la inmigración, llegando incluso a materializarse en un retorno de inmigrantes a sus países de origen, lo que dado las bajas tasas de natalidad en España, se tradujo en reducciones de población a nivel agregado, así como en la mayoría de provincias, incluidas las más dinámicas.</p>
+<p><br></p>
+<p><img src="imagenes/heatmap_02.png" width="70%" style="display: block; margin: auto;" /></p>
+<p><br></p>
+<p>Bueno!!! Me reafirmo, conforme aprendo más sobre <code>ggplot2</code> más me gusta hacer gráficos pero … es bastante complicado dejarlos bien acabados y desde luego lleva tiempo, así que ya vale, creo que los próximos posts aprovecharé mi plantilla para hacer coropletas que esa sí la he dejado bastante niquelada.</p>
+</div>
